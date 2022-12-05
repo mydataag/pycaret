@@ -27,6 +27,7 @@ from sktime.transformations.series.detrend import (  # type: ignore
     ConditionalDeseasonalizer,
     Detrender,
 )
+from sktime.transformations.series.summarize import WindowSummarizer
 
 import pycaret.containers.base_container
 from pycaret.containers.models.base_model import (
@@ -1051,7 +1052,7 @@ class ThetaContainer(TimeSeriesContainer):
 
     @property
     def _set_args(self) -> Dict[str, Any]:
-        # https://github.com/alan-turing-institute/sktime/issues/940
+        # https://github.com/sktime/sktime/issues/940
         if self.strictly_positive:
             deseasonalize = True
         else:
@@ -1064,7 +1065,7 @@ class ThetaContainer(TimeSeriesContainer):
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
         # TODO; Update after Bug is fixed in sktime
-        # https://github.com/alan-turing-institute/sktime/issues/692
+        # https://github.com/sktime/sktime/issues/692
         # ThetaForecaster does not work with "initial_level" different from None
         if self.seasonality_present:
             tune_grid = {
@@ -1083,7 +1084,7 @@ class ThetaContainer(TimeSeriesContainer):
     @property
     def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         # TODO; Update after Bug is fixed in sktime
-        # https://github.com/alan-turing-institute/sktime/issues/692
+        # https://github.com/sktime/sktime/issues/692
         # ThetaForecaster does not work with "initial_level" different from None
         if self.seasonality_present:
             tune_distributions = {
@@ -1315,6 +1316,7 @@ class CdsDtContainer(TimeSeriesContainer):
     def __init__(self, experiment) -> None:
         self.logger = get_logger()
         self.seed = experiment.seed
+        self.fe_target_rr = experiment.fe_target_rr
         np.random.seed(self.seed)
 
         # Import the right regressor
@@ -1421,6 +1423,7 @@ class CdsDtContainer(TimeSeriesContainer):
             "regressor": self.regressor,
             "sp": self.sp,
             "window_length": self.sp,
+            "fe_target_rr": self.fe_target_rr,
         }
         return args
 
@@ -2545,7 +2548,7 @@ class CatBoostCdsDtContainer(CdsDtContainer):
 
 
 class BaseCdsDtForecaster(BaseForecaster):
-    # https://github.com/alan-turing-institute/sktime/blob/v0.8.0/extension_templates/forecasting.py
+    # https://github.com/sktime/sktime/blob/v0.8.0/extension_templates/forecasting.py
     model_type = None
 
     _tags = {
@@ -2561,15 +2564,21 @@ class BaseCdsDtForecaster(BaseForecaster):
     }
 
     def __init__(
-        self, regressor, sp=1, deseasonal_model="additive", degree=1, window_length=10
+        self,
+        regressor: Any,
+        sp: int = 1,
+        deseasonal_model: str = "additive",
+        degree: int = 1,
+        window_length: int = 10,
+        fe_target_rr: Optional[list] = None,
     ):
         """Base Class for time series using scikit models which includes
         Conditional Deseasonalizing and Detrending
 
         Parameters
         ----------
-        regressor : [type]
-            [description]
+        regressor : Any
+            The regressor to be used for the reduced regression model
         sp : int, optional
             Seasonality period used to deseasonalize, by default 1
         deseasonal_model : str, optional
@@ -2577,13 +2586,33 @@ class BaseCdsDtForecaster(BaseForecaster):
         degree : int, optional
             degree of detrender, by default 1
         window_length : int, optional
-            Window Length used for the Reduced Forecaster, by default 10
+            Window Length used for the Reduced Forecaster, by default 10.
+            If fe_target_rr is provided, window_length is ignored.
+        fe_target_rr : Optional[list], optional
+            Custom transformations used to extract features from the target (useful
+            for extracting lagged features), by default None which takes the lags
+            based on a window_length parameter. If provided, window_length is ignored.
         """
         self.regressor = regressor
         self.sp = sp
         self.deseasonal_model = deseasonal_model
         self.degree = degree
         self.window_length = window_length
+
+        if fe_target_rr is None:
+            # All target lags as features.
+            # NOTE: Previously, this forecaster class used the `window_length` argument
+            # in make_reduction. Now we have moved to using the `transformers` argument.
+            # The order of columns matter for some models like tree based models
+            # Hence we start with the furthest away lag and end with the most recent lag.
+            # This behavior matches the behavior of the `window_length`` argument in
+            # make_reduction which is used in this forecaster class.
+            kwargs = {
+                "lag_feature": {"lag": list(np.arange(self.window_length, 0, -1))}
+            }
+            self.fe_target_rr = [WindowSummarizer(**kwargs, n_jobs=1)]
+        else:
+            self.fe_target_rr = fe_target_rr
 
         super(BaseCdsDtForecaster, self).__init__()
 
@@ -2603,8 +2632,10 @@ class BaseCdsDtForecaster(BaseForecaster):
                     make_reduction(
                         estimator=self.regressor,
                         scitype="tabular-regressor",
-                        window_length=self.window_length,
+                        transformers=self.fe_target_rr,
+                        window_length=None,
                         strategy="recursive",
+                        pooling="global",
                     ),
                 ),
             ]
@@ -2677,7 +2708,7 @@ if _check_soft_dependencies("prophet", extra=None, severity="warning"):
             # TODO: Disable Prophet when Index is of any type other than DatetimeIndex or PeriodIndex
             # In that case, pycaret will always pass PeriodIndex from outside
             # since Datetime index are converted to PeriodIndex in pycaret
-            # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
+            # Ref: https://github.com/sktime/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
             # But sktime Prophet only supports DatetimeIndex
             # Hence coerce the index internally if it is not DatetimeIndex
             X = coerce_period_to_datetime_index(X)
@@ -2729,7 +2760,7 @@ if _check_soft_dependencies("prophet", extra=None, severity="warning"):
             # TODO: Disable Prophet when Index is of any type other than DatetimeIndex or PeriodIndex
             # In that case, pycaret will always pass PeriodIndex from outside
             # since Datetime index are converted to PeriodIndex in pycaret
-            # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
+            # Ref: https://github.com/sktime/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
             # But sktime Prophet only supports DatetimeIndex
             # Hence coerce the index internally if it is not DatetimeIndex
             X = coerce_period_to_datetime_index(X)

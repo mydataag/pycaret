@@ -1,8 +1,8 @@
 import os
 import sys
-import warnings
 from typing import Any, Dict, Optional
 
+import deprecation
 import pandas as pd
 import sklearn
 from IPython.display import display
@@ -14,17 +14,20 @@ from pycaret.loggers import DashboardLogger
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
+from pycaret.utils import __version__
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.generic import get_logger
 
-warnings.warn(
-    "PyCaret NLP module is deprecated and not representative "
-    "of the current state of the library. "
-    "It may be removed and/or reworked in a future update.",
-    DeprecationWarning,
+deprecated_in = "3.0.0rc5"
+deprecation_msg = " If you want to use the `nlp` module, please install `pycaret` version 3.0.0 (preferred) or lower."
+
+
+@deprecation.deprecated(
+    deprecated_in=deprecated_in,
+    removed_in="3.1.0",
+    current_version=__version__,
+    details=deprecation_msg,
 )
-
-
 def setup(
     data,
     target=None,
@@ -1978,11 +1981,6 @@ def plot_model(
 
     logger.info("Importing libraries")
 
-    import cufflinks as cf
-
-    cf.go_offline()
-    cf.set_config_file(offline=False, world_readable=True)
-
     # save parameter
 
     if save:
@@ -3233,16 +3231,11 @@ def tune_model(
     logger.info("Importing libraries")
 
     # General Dependencies
-    # setting up cufflinks
-    import cufflinks as cf
     import numpy as np
     import plotly.express as px
     from sklearn import metrics
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import cross_val_predict
-
-    cf.go_offline()
-    cf.set_config_file(offline=False, world_readable=True)
 
     progress.value += 1
 

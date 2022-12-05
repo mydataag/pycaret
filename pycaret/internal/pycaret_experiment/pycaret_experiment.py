@@ -1,3 +1,4 @@
+import warnings
 from collections import defaultdict
 from typing import Any, Dict, Optional
 
@@ -283,7 +284,13 @@ class _PyCaretExperiment:
             )
 
         if any(variable.endswith(attr) for attr in ("train", "test", "dataset")):
-            variable += "_transformed"
+            msg = (
+                f"Variable: '{variable}' used to return the transformed values in pycaret 2.x. "
+                "From pycaret 3.x, this will return the raw values. "
+                f"If you need the transformed values, call get_config with '{variable}_transformed' instead."
+            )
+            self.logger.info(msg)
+            warnings.warn(msg)  # print on screen
 
         var = getattr(self, variable)
 
@@ -468,8 +475,8 @@ class _PyCaretExperiment:
             # which would be confusing. Hence, we return y_test indices here and if
             # we want to get X_test indices, then we use self.X_test directly.
             # Refer:
-            # https://github.com/alan-turing-institute/sktime/issues/2598#issuecomment-1203308542
-            # https://github.com/alan-turing-institute/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
+            # https://github.com/sktime/sktime/issues/2598#issuecomment-1203308542
+            # https://github.com/sktime/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
             return self.dataset.loc[self.idx[1], :]
 
     @property
@@ -482,9 +489,12 @@ class _PyCaretExperiment:
                 return self.dataset  # For unsupervised: dataset == X
         else:
             X = self.dataset.drop(self.target_param, axis=1)
-            if X.empty:
+            if X.empty and self.fe_exogenous is None:
                 return None
             else:
+                # If X is not empty or empty but self.fe_exogenous is provided
+                # Return X instead of None, since the index can be used to
+                # generate features using self.fe_exogenous
                 return X
 
     @property
@@ -505,9 +515,12 @@ class _PyCaretExperiment:
         if self._ml_usecase != MLUsecase.TIME_SERIES:
             return X_train
         else:
-            if X_train.empty:
+            if X_train.empty and self.fe_exogenous is None:
                 return None
             else:
+                # If X_train is not empty or empty but self.fe_exogenous is provided
+                # Return X_train instead of None, since the index can be used to
+                # generate features using self.fe_exogenous
                 return X_train
 
     @property
@@ -527,9 +540,12 @@ class _PyCaretExperiment:
         if self._ml_usecase != MLUsecase.TIME_SERIES:
             return X_test
         else:
-            if X_test.empty:
+            if X_test.empty and self.fe_exogenous is None:
                 return None
             else:
+                # If X_test is not empty or empty but self.fe_exogenous is provided
+                # Return X_test instead of None, since the index can be used to
+                # generate features using self.fe_exogenous
                 return X_test
 
     @property
@@ -620,8 +636,8 @@ class _PyCaretExperiment:
             # which would be confusing. Hence, we return y_test indices here and if
             # we want to get X_test indices, then we use self.X_test directly.
             # Refer:
-            # https://github.com/alan-turing-institute/sktime/issues/2598#issuecomment-1203308542
-            # https://github.com/alan-turing-institute/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
+            # https://github.com/sktime/sktime/issues/2598#issuecomment-1203308542
+            # https://github.com/sktime/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
             return all_data.loc[self.idx[1]]
 
     @property

@@ -346,13 +346,10 @@ class _TabularExperiment(_PyCaretExperiment):
                 cuml_version = __version__
                 self.logger.info(f"cuml=={cuml_version}")
 
-                cuml_version = cuml_version.split(".")
-                cuml_version = (int(cuml_version[0]), int(cuml_version[1]))
-
             if cuml_version is None or not version.parse(cuml_version) >= version.parse(
-                "0.15"
+                "22.10"
             ):
-                message = f"cuML is outdated or not found. Required version is >=0.15, got {__version__}"
+                message = f"cuML is outdated or not found. Required version is >=22.10, got {__version__}"
                 if use_gpu == "force":
                     raise ImportError(message)
                 else:
@@ -431,12 +428,6 @@ class _TabularExperiment(_PyCaretExperiment):
         #    raise ValueError(
         #    "CatBoost estimator is not compatible with plot_model function, try using Catboost with interpret_model instead."
         # )
-
-        # checking for auc plot
-        if not hasattr(estimator, "predict_proba") and plot == "auc":
-            raise TypeError(
-                "AUC plot not available for estimators with no predict_proba attribute."
-            )
 
         # checking for auc plot
         if not hasattr(estimator, "predict_proba") and plot == "auc":
@@ -1068,7 +1059,6 @@ class _TabularExperiment(_PyCaretExperiment):
                             scale=scale,
                             save=save,
                             fit_kwargs=fit_kwargs,
-                            groups=groups,
                             display_format=display_format,
                         )
 
@@ -1095,7 +1085,6 @@ class _TabularExperiment(_PyCaretExperiment):
                             scale=scale,
                             save=save,
                             fit_kwargs=fit_kwargs,
-                            groups=groups,
                             display_format=display_format,
                         )
                     except Exception:
@@ -1119,7 +1108,6 @@ class _TabularExperiment(_PyCaretExperiment):
                             scale=scale,
                             save=save,
                             fit_kwargs=fit_kwargs,
-                            groups=groups,
                             display_format=display_format,
                         )
                     except Exception:
@@ -1142,7 +1130,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1161,7 +1148,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1182,7 +1168,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1203,7 +1188,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1227,7 +1211,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1257,7 +1240,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1277,7 +1259,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         save=save,
                         fit_kwargs=fit_kwargs,
                         handle_test="",
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1298,7 +1279,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1338,7 +1318,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         handle_test="draw",
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         features=["Feature One", "Feature Two"],
                         classes=["A", "B"],
                         display_format=display_format,
@@ -1348,7 +1327,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     from yellowbrick.model_selection import RFECV
 
-                    visualizer = RFECV(estimator, cv=cv, **plot_kwargs)
+                    visualizer = RFECV(estimator, cv=cv, groups=groups, **plot_kwargs)
                     return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
@@ -1360,7 +1339,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1373,6 +1351,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         estimator,
                         cv=cv,
                         train_sizes=sizes,
+                        groups=groups,
                         n_jobs=self._gpu_n_jobs_param,
                         random_state=self.seed,
                     )
@@ -1387,7 +1366,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1463,7 +1441,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1791,6 +1768,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         param_name=param_name,
                         param_range=param_range,
                         cv=cv,
+                        groups=groups,
                         random_state=self.seed,
                         n_jobs=self._gpu_n_jobs_param,
                     )
@@ -1806,7 +1784,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1847,7 +1824,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
